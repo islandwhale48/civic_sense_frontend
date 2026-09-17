@@ -1,122 +1,166 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import React, { useState, useMemo } from 'react';
+import { Routes, Route } from 'react-router-dom';
+import Navbar from './Components/Navbar';
+import Sidebar from './Components/Sidebar';
+import ReportCard from './Components/ReportCard';
+import Feed from './Pages/Feed';
+import Issue from './Pages/Issue';
+import Profile from './Pages/Profile';
+import { initialIssues } from './data/mockIssues';
 
-function App() {
-  const [count, setCount] = useState(0)
+export default function App() {
+  const [issues, setIssues] = useState(initialIssues);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [sortBy, setSortBy] = useState('upvotes');
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+
+  // Toggle upvote on an issue
+  const handleToggleUpvote = (issueId) => {
+    setIssues((prev) =>
+      prev.map((issue) => {
+        if (issue.id === issueId) {
+          const newUpvoted = !issue.upvotedByUser;
+          return {
+            ...issue,
+            upvotedByUser: newUpvoted,
+            upvotes: newUpvoted ? issue.upvotes + 1 : issue.upvotes - 1
+          };
+        }
+        return issue;
+      })
+    );
+  };
+
+  // Add comment to an issue
+  const handleAddComment = (issueId, comment) => {
+    setIssues((prev) =>
+      prev.map((issue) => {
+        if (issue.id === issueId) {
+          return {
+            ...issue,
+            commentsCount: (issue.commentsCount || 0) + 1,
+            comments: [comment, ...(issue.comments || [])]
+          };
+        }
+        return issue;
+      })
+    );
+  };
+
+  // Create a new reported issue
+  const handleCreateIssue = (newIssue) => {
+    setIssues((prev) => [newIssue, ...prev]);
+  };
+
+  // Filter & sort issues for display
+  const filteredIssues = useMemo(() => {
+    return issues
+      .filter((issue) => {
+        // Search Filter
+        if (searchQuery.trim()) {
+          const q = searchQuery.toLowerCase();
+          const matchTitle = issue.title.toLowerCase().includes(q);
+          const matchDesc = issue.description.toLowerCase().includes(q);
+          const matchLoc = issue.location.toLowerCase().includes(q);
+          if (!matchTitle && !matchDesc && !matchLoc) return false;
+        }
+
+        // Category Filter
+        if (selectedCategory !== 'All' && issue.category !== selectedCategory) {
+          return false;
+        }
+
+        // Status Filter
+        if (statusFilter !== 'All' && issue.status !== statusFilter) {
+          return false;
+        }
+
+        return true;
+      })
+      .sort((a, b) => {
+        if (sortBy === 'upvotes') {
+          return b.upvotes - a.upvotes;
+        } else {
+          return new Date(b.createdAt) - new Date(a.createdAt);
+        }
+      });
+  }, [issues, searchQuery, selectedCategory, statusFilter, sortBy]);
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <div className="min-h-screen bg-[#0b0f19] text-slate-100 flex flex-col font-sans selection:bg-blue-500 selection:text-white">
+      
+      {/* Top Navigation */}
+      <Navbar
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        onOpenReportModal={() => setIsReportModalOpen(true)}
+      />
 
-      <div className="ticks"></div>
+      {/* Main Container */}
+      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 flex flex-col lg:flex-row gap-8">
+        
+        {/* Sidebar */}
+        <Sidebar
+          selectedCategory={selectedCategory}
+          setSelectedCategory={setSelectedCategory}
+          totalIssuesCount={issues.length}
+        />
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
+        {/* Dynamic Page Router Content */}
+        <div className="flex-1 flex flex-col min-w-0">
+          <Routes>
+            <Route
+              path="/"
+              element={
+                <Feed
+                  issues={filteredIssues}
+                  statusFilter={statusFilter}
+                  setStatusFilter={setStatusFilter}
+                  sortBy={sortBy}
+                  setSortBy={setSortBy}
+                  onToggleUpvote={handleToggleUpvote}
+                  onOpenReportModal={() => setIsReportModalOpen(true)}
+                />
+              }
+            />
+            <Route
+              path="/issue/:id"
+              element={
+                <Issue
+                  issues={issues}
+                  onToggleUpvote={handleToggleUpvote}
+                  onAddComment={handleAddComment}
+                />
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <Profile
+                  issues={issues}
+                  onToggleUpvote={handleToggleUpvote}
+                />
+              }
+            />
+          </Routes>
         </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+      </main>
+
+      {/* Global Report Modal */}
+      <ReportCard
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        onSubmitIssue={handleCreateIssue}
+      />
+
+      {/* Footer */}
+      <footer className="border-t border-slate-800/80 bg-slate-900/50 py-6 text-center text-xs text-slate-500 mt-12">
+        <p>© 2026 CivicSense Platform • Empowering Communities through Open Civic Action</p>
+      </footer>
+
+    </div>
+  );
 }
-
-export default App
