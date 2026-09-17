@@ -38,6 +38,16 @@ export default function IssueCard({ issue, onToggleUpvote }) {
               <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-800 text-blue-400 border border-slate-700/80">
                 {issue.category}
               </span>
+              {issue.ticketId && (
+                <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                  {issue.ticketId}
+                </span>
+              )}
+              {issue.linkedReportsCount > 1 && (
+                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                  👥 {issue.linkedReportsCount} Linked Reports
+                </span>
+              )}
               {issue.priority === 'Critical' && (
                 <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30">
                   Critical
