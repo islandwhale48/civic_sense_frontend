@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 
-const STAGES = ['Reported', 'Verified', 'In Progress', 'Resolved'];
+const STAGES = ['REPORTED', 'ACCEPTED', 'ASSIGNED', 'IN_PROGRESS', 'RESOLVED'];
 
 export default function Issue({ issues, onToggleUpvote, onAddComment }) {
   const { id } = useParams();
@@ -26,12 +26,8 @@ export default function Issue({ issues, onToggleUpvote, onAddComment }) {
   }
 
   // Calculate current stage index for timeline stepper
-  const currentStageIndex = STAGES.findIndex((stage) => {
-    if (issue.status === 'pending') return stage === 'Reported';
-    if (issue.status === 'in_progress') return stage === 'In Progress';
-    if (issue.status === 'resolved') return stage === 'Resolved';
-    return false;
-  });
+  const currentStatus = (issue.status || 'REPORTED').toUpperCase();
+  const currentStageIndex = STAGES.findIndex((stage) => stage === currentStatus);
 
   const handleCommentSubmit = (e) => {
     e.preventDefault();
@@ -49,7 +45,7 @@ export default function Issue({ issues, onToggleUpvote, onAddComment }) {
 
   return (
     <div className="flex-1 flex flex-col gap-6 max-w-4xl mx-auto w-full">
-      
+
       {/* Back button */}
       <div className="flex items-center justify-between">
         <button
@@ -59,35 +55,32 @@ export default function Issue({ issues, onToggleUpvote, onAddComment }) {
           <span>← Back to Community Feed</span>
         </button>
 
-        <span className="text-xs text-slate-500 font-mono">
-          Report ID: {issue.id}
+        <span className="text-xs text-indigo-400 font-mono font-bold bg-indigo-500/10 px-3 py-1 rounded-full border border-indigo-500/30">
+          Ticket #{issue.ticketId || issue.id}
         </span>
       </div>
 
       {/* Main Issue Card */}
       <div className="glass-card rounded-3xl p-6 sm:p-8 border border-slate-800">
-        
-        {/* Header Details */}
+
+        {/* Header Badges */}
         <div className="flex items-center justify-between gap-4 flex-wrap mb-4">
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold px-3 py-1 rounded-full bg-slate-800 text-blue-400 border border-slate-700">
               {issue.category}
             </span>
-            <span className={`text-xs font-bold px-3 py-1 rounded-full ${
-              issue.priority === 'Critical' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-slate-800 text-slate-300'
-            }`}>
-              {issue.priority} Priority
+            <span className="text-xs font-bold px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
+              👥 {issue.reportCount || issue.linkedReportsCount || 1} Citizen Reports Linked
             </span>
           </div>
 
           {/* Upvote Action */}
           <button
             onClick={() => onToggleUpvote(issue.id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              issue.upvotedByUser
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${issue.upvotedByUser
                 ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
                 : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
-            }`}
+              }`}
           >
             <svg
               className={`w-4 h-4 ${issue.upvotedByUser ? 'text-white' : 'text-slate-400'}`}
@@ -119,29 +112,32 @@ export default function Issue({ issues, onToggleUpvote, onAddComment }) {
             </svg>
             <span>{issue.location}</span>
           </div>
+          <span>•</span>
+          <div className="flex items-center gap-1 text-blue-300">
+            <span>🏛️ Authority: <strong>{issue.authority || issue.assignedAuthority}</strong></span>
+          </div>
         </div>
 
         {/* Status Timeline Stepper */}
         <div className="bg-slate-900/90 rounded-2xl p-6 border border-slate-800 mb-6">
           <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">
-            Resolution Progress Timeline
+            Official Resolution Progress Stepper
           </h3>
-          
-          <div className="grid grid-cols-4 gap-2 text-center relative">
+
+          <div className="grid grid-cols-5 gap-1 text-center relative">
             {STAGES.map((stage, idx) => {
               const isCompleted = idx <= (currentStageIndex >= 0 ? currentStageIndex : 0);
               const isCurrent = idx === currentStageIndex;
               return (
                 <div key={stage} className="flex flex-col items-center">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs mb-2 transition-all ${
-                    isCompleted
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs mb-2 transition-all ${isCompleted
                       ? 'bg-blue-600 text-white ring-4 ring-blue-500/20'
                       : 'bg-slate-800 text-slate-500'
-                  }`}>
+                    }`}>
                     {isCompleted ? '✓' : idx + 1}
                   </div>
-                  <span className={`text-xs font-medium ${isCurrent ? 'text-blue-400 font-bold' : isCompleted ? 'text-slate-200' : 'text-slate-500'}`}>
-                    {stage}
+                  <span className={`text-[11px] font-medium ${isCurrent ? 'text-blue-400 font-bold' : isCompleted ? 'text-slate-200' : 'text-slate-500'}`}>
+                    {stage.replace('_', ' ')}
                   </span>
                 </div>
               );
@@ -165,30 +161,54 @@ export default function Issue({ issues, onToggleUpvote, onAddComment }) {
           )}
         </div>
 
-        {/* Photo Preview */}
-        {issue.imageUrl && (
+        {/* Master Photo Preview */}
+        {(issue.media?.url || issue.imageUrl) && (
           <div className="rounded-2xl overflow-hidden mb-6 bg-slate-950 border border-slate-800 max-h-96">
-            <img src={issue.imageUrl} alt={issue.title} className="w-full h-full object-cover" />
+            <img src={issue.media?.url || issue.imageUrl} alt={issue.title} className="w-full h-full object-cover" />
           </div>
         )}
 
-        {/* Full Description */}
+        {/* Master Description */}
         <div className="mb-8">
           <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-2">
-            Description
+            Master Issue Description
           </h3>
-          <p className="text-slate-300 text-sm leading-relaxed whitespace-pre-line">
+          <p className="text-slate-300 text-sm leading-relaxed whitespace-pre-line bg-slate-900/60 p-4 rounded-xl border border-slate-800">
             {issue.description}
           </p>
         </div>
 
+        {/* Linked Citizen Reports Stream */}
+        {issue.reportsList && issue.reportsList.length > 0 && (
+          <div className="mb-8 p-6 rounded-2xl bg-slate-950/80 border border-purple-500/20">
+            <h3 className="text-sm font-bold text-purple-300 uppercase tracking-wider mb-4 flex items-center gap-2">
+              <span>👥 Linked Citizen Reports ({issue.reportsList.length})</span>
+            </h3>
+            <div className="flex flex-col gap-4">
+              {issue.reportsList.map((report, idx) => (
+                <div key={idx} className="p-4 rounded-xl bg-slate-900 border border-slate-800 flex flex-col sm:flex-row gap-4">
+                  {report.imageUrl && (
+                    <img src={report.imageUrl} alt="" className="w-20 h-20 rounded-lg object-cover bg-slate-950 shrink-0" />
+                  )}
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-bold text-slate-200">{report.reporterName || 'Citizen Report'}</span>
+                      <span className="text-[11px] text-slate-500">{new Date(report.createdAt).toLocaleString()}</span>
+                    </div>
+                    <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-line">{report.description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Comments Section */}
         <div className="pt-6 border-t border-slate-800">
           <h3 className="text-lg font-bold text-white mb-4">
-            Discussion & Updates ({issue.comments ? issue.comments.length : 0})
+            Community Discussion ({issue.comments ? issue.comments.length : 0})
           </h3>
 
-          {/* Comment Form */}
           <form onSubmit={handleCommentSubmit} className="flex gap-3 mb-6">
             <input
               type="text"
@@ -205,7 +225,6 @@ export default function Issue({ issues, onToggleUpvote, onAddComment }) {
             </button>
           </form>
 
-          {/* Comments List */}
           <div className="flex flex-col gap-3">
             {issue.comments && issue.comments.length > 0 ? (
               issue.comments.map((comment) => (
@@ -221,7 +240,7 @@ export default function Issue({ issues, onToggleUpvote, onAddComment }) {
                 </div>
               ))
             ) : (
-              <p className="text-xs text-slate-500 italic py-2">No comments yet. Be the first to share an update!</p>
+              <p className="text-xs text-slate-500 italic py-2">No comments yet.</p>
             )}
           </div>
         </div>
