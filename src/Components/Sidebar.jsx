@@ -12,7 +12,7 @@ const CATEGORIES = [
 
 export default function Sidebar({ selectedCategory, setSelectedCategory, totalIssuesCount }) {
   return (
-    <aside className="w-full lg:w-64 shrink-0 flex flex-col gap-6">
+    <aside className="hidden lg:flex w-full lg:w-64 shrink-0 flex-col gap-6">
       
       {/* Navigation Links */}
       <div className="glass-card rounded-2xl p-4">

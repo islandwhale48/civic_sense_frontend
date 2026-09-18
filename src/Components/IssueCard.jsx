@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 const STATUS_CONFIG = {
   pending: { label: 'Reported', color: 'badge-pending' },
@@ -8,10 +8,19 @@ const STATUS_CONFIG = {
 };
 
 export default function IssueCard({ issue, onToggleUpvote }) {
+  const navigate = useNavigate();
   const statusInfo = STATUS_CONFIG[issue.status] || STATUS_CONFIG.pending;
 
+  const handleCardClick = (e) => {
+    if (e.target.closest('button') || e.target.closest('a')) return;
+    navigate(`/issue/${issue.id}`);
+  };
+
   return (
-    <div className="glass-card rounded-2xl overflow-hidden flex flex-col md:flex-row group border border-slate-800 hover:border-slate-700 transition-all">
+    <div
+      onClick={handleCardClick}
+      className="glass-card rounded-2xl overflow-hidden flex flex-col md:flex-row group border border-slate-800 hover:border-blue-500/40 hover:shadow-xl hover:shadow-blue-500/10 transition-all cursor-pointer"
+    >
       
       {/* Thumbnail Image */}
       {issue.imageUrl && (
@@ -63,7 +72,7 @@ export default function IssueCard({ issue, onToggleUpvote }) {
           {/* Title */}
           <Link
             to={`/issue/${issue.id}`}
-            className="text-lg font-bold text-slate-100 hover:text-blue-400 transition-colors line-clamp-1 block mb-2"
+            className="text-lg font-bold text-slate-100 group-hover:text-blue-400 transition-colors line-clamp-1 block mb-2"
           >
             {issue.title}
           </Link>
@@ -86,7 +95,7 @@ export default function IssueCard({ issue, onToggleUpvote }) {
             {issue.assignedAuthority && (
               <div className="flex items-center gap-1 text-slate-400">
                 <svg className="w-3.5 h-3.5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5m0 0h4m-4 0a2 2 0 012-2h2a2 2 0 012 2m-6 0v-4a2 2 0 012-2h2a2 2 0 012 2v4" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5m0 0h4m-4 0a2 2 0 012-2h2a2 2 0 012 2v4" />
                 </svg>
                 <span>{issue.assignedAuthority}</span>
               </div>
@@ -115,7 +124,10 @@ export default function IssueCard({ issue, onToggleUpvote }) {
           {/* Action buttons (Upvote & Comment) */}
           <div className="flex items-center gap-3">
             <button
-              onClick={() => onToggleUpvote(issue.id)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleUpvote(issue.id);
+              }}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
                 issue.upvotedByUser
                   ? 'bg-blue-600/30 text-blue-300 border border-blue-500/50 shadow-sm shadow-blue-500/20'
@@ -135,6 +147,7 @@ export default function IssueCard({ issue, onToggleUpvote }) {
 
             <Link
               to={`/issue/${issue.id}`}
+              onClick={(e) => e.stopPropagation()}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-800/80 text-slate-300 hover:text-white hover:bg-slate-700/80 border border-slate-700 transition-colors"
             >
               <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">

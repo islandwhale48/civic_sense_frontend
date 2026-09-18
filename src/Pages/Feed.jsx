@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Filters from '../Components/Filters';
 import IssueCard from '../Components/IssueCard';
 
@@ -11,8 +11,32 @@ export default function Feed({
   onToggleUpvote,
   onOpenReportModal
 }) {
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  // Monitor scroll position to toggle the scroll-to-top button
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 300) {
+        setShowScrollTop(true);
+      } else {
+        setShowScrollTop(false);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Smooth scroll back to top of page
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  };
+
   return (
-    <div className="flex-1 flex flex-col">
+    <div className="flex-1 flex flex-col relative">
       
       {/* Hero Header Banner */}
       <div className="glass-card rounded-3xl p-6 sm:p-8 mb-6 relative overflow-hidden border border-blue-500/20 bg-gradient-to-r from-slate-900 via-blue-950/40 to-slate-900">
@@ -72,6 +96,20 @@ export default function Feed({
             Report the First Issue
           </button>
         </div>
+      )}
+
+      {/* Floating Scroll-to-Top Button */}
+      {showScrollTop && (
+        <button
+          onClick={scrollToTop}
+          aria-label="Scroll to top"
+          className="fixed bottom-6 right-6 z-50 p-3.5 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-xl shadow-blue-600/40 border border-blue-400/30 transition-all duration-300 transform hover:scale-110 active:scale-95 cursor-pointer"
+          title="Scroll back to top"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+          </svg>
+        </button>
       )}
 
     </div>
