@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
-export default function Navbar({ searchQuery, setSearchQuery, onOpenReportModal }) {
+export default function Navbar({ searchQuery, setSearchQuery, onOpenReportModal, citizenUser, onOpenAuthModal, onLogout }) {
   const navigate = useNavigate();
 
   return (
@@ -63,28 +63,42 @@ export default function Navbar({ searchQuery, setSearchQuery, onOpenReportModal 
             <span>Report Issue</span>
           </button>
 
-          {/* Notifications */}
-          <button className="p-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/80 relative transition-colors">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-            </svg>
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
-          </button>
-
-          {/* User Profile Avatar Link */}
-          <Link
-            to="/profile"
-            className="flex items-center gap-2 p-1 rounded-xl hover:bg-slate-800/80 transition-colors"
-          >
-            <img
-              src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150"
-              alt="Prakash Kumar"
-              className="w-8 h-8 rounded-lg object-cover ring-2 ring-blue-500/50"
-            />
-          </Link>
+          {citizenUser ? (
+            <div className="flex items-center gap-2 pl-2 border-l border-slate-800">
+              <Link
+                to="/profile"
+                className="flex items-center gap-2 p-1 rounded-xl hover:bg-slate-800/80 transition-colors"
+                title={citizenUser.name}
+              >
+                <img
+                  src={citizenUser.avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150"}
+                  alt={citizenUser.name}
+                  className="w-8 h-8 rounded-lg object-cover ring-2 ring-blue-500/50"
+                />
+                <span className="text-xs font-semibold text-slate-200 hidden md:inline max-w-[100px] truncate">
+                  {citizenUser.name}
+                </span>
+              </Link>
+              <button
+                onClick={onLogout}
+                className="px-2.5 py-1.5 text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-lg border border-rose-500/20 transition-colors"
+                title="Log Out"
+              >
+                Logout
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={onOpenAuthModal}
+              className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700 font-semibold text-xs transition-colors flex items-center gap-1.5"
+            >
+              <span>🔑 Sign In / Register</span>
+            </button>
+          )}
         </div>
 
       </div>
     </header>
   );
 }
+

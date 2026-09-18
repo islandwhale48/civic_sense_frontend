@@ -3,6 +3,7 @@ import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import Navbar from './Components/Navbar';
 import Sidebar from './Components/Sidebar';
 import ReportModal from './components/report/ReportModal';
+import UserAuthModal from './Components/auth/UserAuthModal';
 import Feed from './Pages/Feed';
 import Issue from './Pages/Issue';
 import Profile from './Pages/Profile';
@@ -15,6 +16,17 @@ export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Citizen User Authentication State
+  const [citizenUser, setCitizenUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('civicsense_citizen_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+
   // All hooks must be declared before any conditional returns (Rules of Hooks)
   const [issues, setIssues] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -22,6 +34,30 @@ export default function App() {
   const [statusFilter, setStatusFilter] = useState('All');
   const [sortBy, setSortBy] = useState('upvotes');
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+
+  // Citizen Auth Handlers
+  const handleUserLoginSuccess = (user, token) => {
+    localStorage.setItem('civicsense_citizen_user', JSON.stringify(user));
+    if (token) localStorage.setItem('civicsense_citizen_token', token);
+    setCitizenUser(user);
+    setIsAuthModalOpen(false);
+    // Auto-open Report Modal after login/registration if user was trying to report
+    setIsReportModalOpen(true);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('civicsense_citizen_user');
+    localStorage.removeItem('civicsense_citizen_token');
+    setCitizenUser(null);
+  };
+
+  const handleOpenReportModal = () => {
+    if (!citizenUser) {
+      setIsAuthModalOpen(true);
+    } else {
+      setIsReportModalOpen(true);
+    }
+  };
 
   // Fetch issues from backend API (falls back to mock data if offline)
   const fetchIssues = useCallback(async () => {
@@ -51,6 +87,10 @@ export default function App() {
 
   // Toggle upvote on an issue
   const handleToggleUpvote = (issueId) => {
+    if (!citizenUser) {
+      setIsAuthModalOpen(true);
+      return;
+    }
     setIssues((prev) =>
       prev.map((issue) => {
         if (issue.id === issueId) {
@@ -84,6 +124,10 @@ export default function App() {
 
   // Create a new reported issue, then re-fetch from backend
   const handleCreateIssue = async (newIssue) => {
+    // Attach logged-in user name if present
+    if (citizenUser) {
+      newIssue.reporterName = citizenUser.name;
+    }
     // Optimistically add to state immediately
     setIssues((prev) => [newIssue, ...prev]);
     navigate(`/issue/${newIssue.id || newIssue.ticketId}`);
@@ -140,7 +184,10 @@ export default function App() {
       <Navbar
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
-        onOpenReportModal={() => setIsReportModalOpen(true)}
+        onOpenReportModal={handleOpenReportModal}
+        citizenUser={citizenUser}
+        onOpenAuthModal={() => setIsAuthModalOpen(true)}
+        onLogout={handleLogout}
       />
 
       {/* Main Container */}
@@ -166,7 +213,7 @@ export default function App() {
                   sortBy={sortBy}
                   setSortBy={setSortBy}
                   onToggleUpvote={handleToggleUpvote}
-                  onOpenReportModal={() => setIsReportModalOpen(true)}
+                  onOpenReportModal={handleOpenReportModal}
                 />
               }
             />
@@ -194,6 +241,13 @@ export default function App() {
 
       </main>
 
+      {/* Global Citizen Auth Modal */}
+      <UserAuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onSuccess={handleUserLoginSuccess}
+      />
+
       {/* Global Report Modal */}
       <ReportModal
         isOpen={isReportModalOpen}
@@ -209,3 +263,4 @@ export default function App() {
     </div>
   );
 }
+

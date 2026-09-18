@@ -5,16 +5,45 @@ export function useGeolocation() {
   const [isLocating, setIsLocating] = useState(false);
   const [error, setError] = useState(null);
 
-  const detectLocation = useCallback(() => {
-    if (!navigator.geolocation) {
-      setError('Geolocation is not supported by your browser.');
-      return Promise.reject(new Error('Geolocation not supported'));
+  /**
+   * Helper to detect location via IP fallback when HTML5 geolocation is unavailable/denied/timed out
+   */
+  const fetchIPLocationFallback = async () => {
+    try {
+      const res = await fetch('https://ipapi.co/json/', { timeout: 4000 });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.latitude && data.longitude) {
+          return {
+            lat: parseFloat(data.latitude),
+            lng: parseFloat(data.longitude),
+            city: data.city,
+            region: data.region
+          };
+        }
+      }
+    } catch {
+      // Ignore IP fetch error
     }
+    // Hardcoded fallback if all network lookups fail
+    return { lat: 28.6139, lng: 77.2090 };
+  };
 
+  const detectLocation = useCallback(() => {
     setIsLocating(true);
     setError(null);
 
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
+      if (!navigator.geolocation) {
+        setError('Browser GPS not supported. Fetching network location...');
+        fetchIPLocationFallback().then(coords => {
+          setCoordinates(coords);
+          setIsLocating(false);
+          resolve(coords);
+        });
+        return;
+      }
+
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const coords = {
@@ -25,19 +54,26 @@ export function useGeolocation() {
           setIsLocating(false);
           resolve(coords);
         },
-        (err) => {
-          setIsLocating(false);
-          let errorMsg = 'Unable to retrieve location.';
+        async (err) => {
+          let errorMsg = 'Unable to retrieve precise GPS location.';
           if (err.code === err.PERMISSION_DENIED) {
-            errorMsg = 'Location permission denied. Please allow location access in your browser settings.';
+            errorMsg = 'Location permission denied in browser. Using network approximate location.';
+          } else if (err.code === err.TIMEOUT) {
+            errorMsg = 'GPS location timed out. Using network location...';
           }
           setError(errorMsg);
-          // Fallback coords (e.g. New Delhi Central)
-          const fallback = { lat: 28.6139, lng: 77.2090 };
+
+          // Fallback to IP-based location
+          const fallback = await fetchIPLocationFallback();
           setCoordinates(fallback);
+          setIsLocating(false);
           resolve(fallback);
         },
-        { enableHighAccuracy: false, timeout: 2500 }
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 30000
+        }
       );
     });
   }, []);

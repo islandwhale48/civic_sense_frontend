@@ -52,8 +52,37 @@ export default function Sidebar({ selectedCategory, setSelectedCategory, totalIs
             </svg>
             <span>My Profile & Reports</span>
           </NavLink>
+
+          <NavLink
+            to="/authority"
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                isActive
+                  ? 'bg-purple-600/20 text-purple-400 border border-purple-500/30'
+                  : 'text-slate-300 hover:bg-slate-800/60 hover:text-white'
+              }`
+            }
+          >
+            <span className="text-base">🏛️</span>
+            <span>Ward Authority Portal</span>
+          </NavLink>
+
+          <NavLink
+            to="/admin"
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                isActive
+                  ? 'bg-amber-600/20 text-amber-400 border border-amber-500/30'
+                  : 'text-slate-300 hover:bg-slate-800/60 hover:text-white'
+              }`
+            }
+          >
+            <span className="text-base">🛡️</span>
+            <span>Admin Review Panel</span>
+          </NavLink>
         </nav>
       </div>
+
 
       {/* Category Filter */}
       <div className="glass-card rounded-2xl p-4">

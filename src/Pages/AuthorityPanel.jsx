@@ -364,8 +364,156 @@ function TicketCard({ issue, authorityName, onStatusChange, onSubmitResolution }
   );
 }
 
+/* ─── Authority Login Screen ────────────────────────────────────────────────── */
+function AuthorityLoginView({ onLoginSuccess }) {
+  const [wardIdInput, setWardIdInput] = useState('');
+  const [passwordInput, setPasswordInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [accounts, setAccounts] = useState([]);
+  const [loadingAccounts, setLoadingAccounts] = useState(true);
+
+  const fetchAccounts = useCallback(async () => {
+    try {
+      const res = await issueService.getAuthorityAccounts();
+      const list = res.data?.authorities || res.authorities || [];
+      setAccounts(list);
+    } catch (err) {
+      console.warn('Failed to load registered ward accounts:', err);
+    } finally {
+      setLoadingAccounts(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAccounts();
+  }, [fetchAccounts]);
+
+  const handleLoginSubmit = async (e) => {
+    if (e) e.preventDefault();
+    if (!wardIdInput.trim() || !passwordInput.trim()) {
+      setError('Please enter both Ward ID (or Username) and Password.');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const res = await issueService.loginAuthority(wardIdInput.trim(), passwordInput.trim());
+      const authority = res.data?.authority || res.authority;
+      const token = res.data?.token || res.token;
+
+      if (authority) {
+        onLoginSuccess(authority, token);
+      } else {
+        setError('Login failed. Invalid response from server.');
+      }
+    } catch (err) {
+      setError(err.message || 'Invalid Ward ID or Password.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleQuickLogin = async (acc) => {
+    setWardIdInput(acc.ward_id);
+    setPasswordInput(acc.password);
+    setLoading(true);
+    setError('');
+
+    try {
+      const res = await issueService.loginAuthority(acc.ward_id, acc.password);
+      const authority = res.data?.authority || res.authority;
+      const token = res.data?.token || res.token;
+
+      if (authority) {
+        onLoginSuccess(authority, token);
+      } else {
+        setError('Login failed for selected account.');
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to authenticate quick login.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+  return (
+    <div style={styles.loginPage}>
+      <div style={styles.loginContainer}>
+        
+        {/* Authority Login Form Card */}
+        <div style={styles.loginCard}>
+          <div style={styles.loginHeader}>
+            <div style={styles.govLogoBig}>🏛️</div>
+            <div>
+              <div style={styles.loginGovBadge}>CivicSense Ward Portal</div>
+              <h1 style={styles.loginTitle}>Authority Portal Login</h1>
+              <p style={styles.loginSubtitle}>Access Ward-Specific Civic Management Dashboard</p>
+            </div>
+          </div>
+
+          <form onSubmit={handleLoginSubmit} style={styles.loginForm}>
+            {error && <div style={styles.errorBanner}>{error}</div>}
+
+            <div style={styles.formGroup}>
+              <label style={styles.label}>Ward ID / Ward Name *</label>
+              <input
+                style={styles.input}
+                placeholder="e.g. WARD-CENTRAL-14 or Central Ward #14"
+                value={wardIdInput}
+                onChange={(e) => setWardIdInput(e.target.value)}
+                required
+              />
+            </div>
+
+            <div style={styles.formGroup}>
+              <label style={styles.label}>Password *</label>
+              <input
+                type="password"
+                style={styles.input}
+                placeholder="••••••••"
+                value={passwordInput}
+                onChange={(e) => setPasswordInput(e.target.value)}
+                required
+              />
+            </div>
+
+            <button type="submit" style={styles.loginSubmitBtn} disabled={loading}>
+              {loading ? (
+                <><span style={styles.spinner} /> Authenticating...</>
+              ) : (
+                '🔑 Sign In to Ward Dashboard →'
+              )}
+            </button>
+
+            <div style={styles.loginFooterNote}>
+              <span>🔒 Official Ward Access</span>
+              <span>•</span>
+              <a href="/" style={{ color: '#6366f1', textDecoration: 'none' }}>Citizen View</a>
+            </div>
+          </form>
+        </div>
+
+      </div>
+    </div>
+  );
+
+}
+
 /* ─── Main Authority Panel ─────────────────────────────────────────────────── */
 export default function AuthorityPanel() {
+  const [authAuthority, setAuthAuthority] = useState(() => {
+    try {
+      const saved = localStorage.getItem('civicsense_authority');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
   const [issues, setIssues] = useState([]);
   const [stats, setStats] = useState({});
   const [loading, setLoading] = useState(true);
@@ -374,25 +522,40 @@ export default function AuthorityPanel() {
   const [selectedResolutionIssue, setSelectedResolutionIssue] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Parse authority from URL query param
+  // Parse authority from URL query param fallback
   const params = new URLSearchParams(window.location.search);
   const authorityParam = params.get('body') || params.get('authority') || '';
   const wardParam = params.get('ward') || '';
-  // Friendly display name — strip jurisdiction boilerplate
-  const authorityName = authorityParam || 'Local Authority';
+
+  const currentWardName = authAuthority?.ward_name || wardParam || authorityParam || 'Local Authority';
+  const currentWardId = authAuthority?.ward_id || '';
+  const currentLocalBody = authAuthority?.local_body || '';
+  const authorityName = currentWardName || 'Local Authority';
+
+  const handleLoginSuccess = (authorityData, token) => {
+    localStorage.setItem('civicsense_authority', JSON.stringify(authorityData));
+    if (token) localStorage.setItem('civicsense_authority_token', token);
+    setAuthAuthority(authorityData);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('civicsense_authority');
+    localStorage.removeItem('civicsense_authority_token');
+    setAuthAuthority(null);
+  };
 
   const fetchIssues = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
       const data = await issueService.getIssuesByAuthority({
-        authority: authorityParam,
-        ward: wardParam
+        ward_id: currentWardId,
+        ward: currentWardName,
+        authority: authorityParam
       });
       setIssues(data.issues || []);
       setStats(data.stats || {});
     } catch (err) {
-      // Fallback: if no authority param, fetch all issues for demo
       try {
         const fallback = await issueService.getIssues({});
         setIssues(fallback.issues || []);
@@ -410,11 +573,17 @@ export default function AuthorityPanel() {
     } finally {
       setLoading(false);
     }
-  }, [authorityParam, wardParam]);
+  }, [currentWardId, currentWardName, authorityParam]);
 
   useEffect(() => {
-    fetchIssues();
-  }, [fetchIssues]);
+    if (authAuthority || wardParam || authorityParam) {
+      fetchIssues();
+    }
+  }, [fetchIssues, authAuthority, wardParam, authorityParam]);
+
+  if (!authAuthority && !wardParam && !authorityParam) {
+    return <AuthorityLoginView onLoginSuccess={handleLoginSuccess} />;
+  }
 
   const handleStatusChange = (issueId, newStatus) => {
     setIssues(prev => prev.map(i => i.id === issueId ? { ...i, status: newStatus } : i));
@@ -427,13 +596,14 @@ export default function AuthorityPanel() {
 
   // Filter issues
   const FILTER_TABS = [
-    { key: 'All', label: 'All', count: stats.total },
-    { key: 'pending', label: 'Pending', count: stats.pending },
-    { key: 'in_progress', label: 'In Progress', count: stats.in_progress },
-    { key: 'pending_inspection', label: 'Inspection', count: stats.pending_inspection },
-    { key: 'resolution_submitted', label: 'Awaiting Admin', count: stats.resolution_submitted },
-    { key: 'resolved', label: 'Resolved', count: stats.resolved }
+    { key: 'All', label: 'All', count: stats?.total || 0 },
+    { key: 'pending', label: 'Pending', count: stats?.pending || 0 },
+    { key: 'in_progress', label: 'In Progress', count: stats?.in_progress || 0 },
+    { key: 'pending_inspection', label: 'Inspection', count: stats?.pending_inspection || 0 },
+    { key: 'resolution_submitted', label: 'Awaiting Admin', count: stats?.resolution_submitted || 0 },
+    { key: 'resolved', label: 'Resolved', count: stats?.resolved || 0 }
   ];
+
 
   const filteredIssues = issues.filter(i => {
     const matchStatus = activeFilter === 'All' || i.status === activeFilter;
@@ -452,15 +622,19 @@ export default function AuthorityPanel() {
           <div style={styles.headerLeft}>
             <div style={styles.govLogo}>🏛️</div>
             <div>
-              <div style={styles.govBadge}>Authority Management Panel</div>
+              <div style={styles.govBadge}>Ward Authority Dashboard</div>
               <h1 style={styles.headerTitle}>
-                {authorityName || 'Local Body Dashboard'}
+                {currentWardName}
               </h1>
-              {wardParam && <div style={styles.wardLabel}>📍 {wardParam}</div>}
+              <div style={styles.wardLabelRow}>
+                {currentWardId && <span style={styles.wardIdBadge}>ID: {currentWardId}</span>}
+                {currentLocalBody && <span style={styles.localBodyBadge}>🏢 {currentLocalBody}</span>}
+              </div>
             </div>
           </div>
           <div style={styles.headerRight}>
             <button style={styles.refreshBtn} onClick={fetchIssues}>🔄 Refresh</button>
+            <button style={styles.logoutBtn} onClick={handleLogout}>🔒 Logout</button>
             <a href="/" style={styles.citizenLink}>← Citizen View</a>
           </div>
         </div>
@@ -478,6 +652,7 @@ export default function AuthorityPanel() {
           ].map((s) => (
             <div key={s.label} style={styles.statCard}>
               <div style={styles.statIcon}>{s.icon}</div>
+
               <div style={{ ...styles.statValue, color: s.color }}>{s.value}</div>
               <div style={styles.statLabel}>{s.label}</div>
             </div>
@@ -1098,6 +1273,185 @@ const styles = {
     borderTopColor: '#fff',
     borderRadius: '50%',
     animation: 'spin 0.7s linear infinite'
+  },
+
+  /* Ward Header Badges & Logout */
+  wardLabelRow: { display: 'flex', gap: 8, alignItems: 'center', marginTop: 6, flexWrap: 'wrap' },
+  wardIdBadge: {
+    background: 'rgba(99,102,241,0.2)',
+    border: '1px solid rgba(99,102,241,0.4)',
+    color: '#a78bfa',
+    fontSize: 12,
+    fontWeight: 600,
+    padding: '3px 9px',
+    borderRadius: 6
+  },
+  localBodyBadge: {
+    background: 'rgba(255,255,255,0.06)',
+    border: '1px solid rgba(255,255,255,0.1)',
+    color: '#cbd5e1',
+    fontSize: 12,
+    padding: '3px 9px',
+    borderRadius: 6
+  },
+  logoutBtn: {
+    background: 'rgba(239,68,68,0.15)',
+    border: '1px solid rgba(239,68,68,0.3)',
+    color: '#f87171',
+    padding: '8px 16px',
+    borderRadius: 8,
+    cursor: 'pointer',
+    fontSize: 13,
+    fontWeight: 600,
+    transition: 'all 0.2s'
+  },
+
+  /* Authority Login View */
+  loginPage: {
+    minHeight: '100vh',
+    background: '#0b0f19',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '40px 20px',
+    boxSizing: 'border-box',
+    fontFamily: "'Inter', sans-serif"
+  },
+  loginContainer: {
+    maxWidth: 450,
+    width: '100%'
+  },
+
+  loginCard: {
+    background: 'linear-gradient(145deg, #111827 0%, #1f2937 100%)',
+    border: '1px solid rgba(99,102,241,0.25)',
+    borderRadius: 20,
+    padding: 36,
+    boxShadow: '0 25px 50px -12px rgba(0,0,0,0.6)',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center'
+  },
+  loginHeader: { display: 'flex', gap: 16, alignItems: 'flex-start', marginBottom: 28 },
+  govLogoBig: {
+    fontSize: 42,
+    background: 'rgba(99,102,241,0.15)',
+    border: '1px solid rgba(99,102,241,0.3)',
+    width: 64,
+    height: 64,
+    borderRadius: 16,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0
+  },
+  loginGovBadge: {
+    fontSize: 11,
+    color: '#6366f1',
+    fontWeight: 700,
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase',
+    marginBottom: 4
+  },
+  loginTitle: { fontSize: 22, fontWeight: 700, color: '#f8fafc', margin: 0 },
+  loginSubtitle: { fontSize: 13, color: '#94a3b8', marginTop: 4 },
+  loginForm: { display: 'flex', flexDirection: 'column' },
+  input: {
+    width: '100%',
+    padding: '12px 16px',
+    background: 'rgba(255,255,255,0.04)',
+    border: '1px solid rgba(255,255,255,0.1)',
+    borderRadius: 10,
+    color: '#f8fafc',
+    fontSize: 14,
+    outline: 'none',
+    boxSizing: 'border-box'
+  },
+  loginSubmitBtn: {
+    marginTop: 10,
+    padding: '14px',
+    background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+    border: 'none',
+    borderRadius: 10,
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: 600,
+    cursor: 'pointer',
+    boxShadow: '0 10px 20px rgba(99,102,241,0.3)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8
+  },
+  loginFooterNote: {
+    marginTop: 20,
+    display: 'flex',
+    gap: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: 12,
+    color: '#64748b'
+  },
+
+  /* Registered Accounts Drawer */
+  accountsDrawerCard: {
+    background: 'rgba(17,24,39,0.7)',
+    border: '1px solid rgba(255,255,255,0.08)',
+    backdropFilter: 'blur(12px)',
+    borderRadius: 20,
+    padding: 28,
+    display: 'flex',
+    flexDirection: 'column'
+  },
+  drawerHeader: { marginBottom: 20 },
+  drawerBadge: {
+    fontSize: 11,
+    color: '#10b981',
+    fontWeight: 700,
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase',
+    marginBottom: 6
+  },
+  drawerTitle: { fontSize: 18, fontWeight: 700, color: '#f1f5f9', margin: 0 },
+  drawerSubtitle: { fontSize: 12, color: '#94a3b8', marginTop: 6, lineHeight: '1.5' },
+  accountsListContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12,
+    maxHeight: 400,
+    overflowY: 'auto',
+    paddingRight: 4
+  },
+  accountCard: {
+    background: 'rgba(255,255,255,0.03)',
+    border: '1px solid rgba(255,255,255,0.07)',
+    borderRadius: 12,
+    padding: 14,
+    transition: 'all 0.2s'
+  },
+  accountCardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+  accountWardName: { fontSize: 14, fontWeight: 700, color: '#38bdf8' },
+  accountWardIdBadge: {
+    background: 'rgba(14,165,233,0.15)',
+    border: '1px solid rgba(14,165,233,0.3)',
+    color: '#38bdf8',
+    fontSize: 11,
+    fontWeight: 600,
+    padding: '2px 8px',
+    borderRadius: 6
+  },
+  accountLocalBody: { fontSize: 12, color: '#94a3b8', marginBottom: 10 },
+  accountCredsRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
+  credPill: { fontSize: 11, color: '#e2e8f0', background: 'rgba(255,255,255,0.06)', padding: '4px 8px', borderRadius: 6 },
+  quickLoginBtn: {
+    padding: '5px 12px',
+    background: 'linear-gradient(135deg, #10b981, #059669)',
+    border: 'none',
+    borderRadius: 6,
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: 600,
+    cursor: 'pointer'
   }
 };
 
@@ -1113,3 +1467,4 @@ if (typeof document !== 'undefined' && !document.getElementById('authority-panel
   `;
   document.head.appendChild(styleEl);
 }
+

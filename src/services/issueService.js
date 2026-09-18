@@ -3,7 +3,23 @@ import { apiRequest } from './api';
 const ADMIN_PIN_HEADER = (pin) => ({ 'x-admin-pin': pin });
 
 export const issueService = {
+  // Citizen Registration & Login
+  async registerCitizen(name, email, password) {
+    return apiRequest('/users/register', {
+      method: 'POST',
+      body: { name, email, password }
+    });
+  },
+
+  async loginCitizen(email, password) {
+    return apiRequest('/users/login', {
+      method: 'POST',
+      body: { email, password }
+    });
+  },
+
   // Get all issues with filters (status, category, search, sort)
+
   async getIssues(params = {}) {
     const query = new URLSearchParams();
     if (params.status) query.append('status', params.status);
@@ -52,11 +68,25 @@ export const issueService = {
     });
   },
 
-  // ── Authority Panel ──────────────────────────────────────────────────────────
+  // ── Authority Panel & Login ──────────────────────────────────────────────────
 
-  // Get issues assigned to a specific local body / authority
+  // Ward Authority Login
+  async loginAuthority(ward_id, password) {
+    return apiRequest('/authority/login', {
+      method: 'POST',
+      body: { ward_id, password }
+    });
+  },
+
+  // Get list of registered Ward Authority accounts (for demo testing & selection)
+  async getAuthorityAccounts() {
+    return apiRequest('/authority/accounts');
+  },
+
+  // Get issues assigned to a specific local body / authority / ward_id
   async getIssuesByAuthority(params = {}) {
     const query = new URLSearchParams();
+    if (params.ward_id) query.append('ward_id', params.ward_id);
     if (params.authority) query.append('authority', params.authority);
     if (params.ward) query.append('ward', params.ward);
     if (params.status && params.status !== 'All') query.append('status', params.status);
@@ -64,6 +94,7 @@ export const issueService = {
     const queryString = query.toString() ? `?${query.toString()}` : '';
     return apiRequest(`/issues/by-authority${queryString}`);
   },
+
 
   // Update issue status (authority action)
   async updateIssueStatus(id, status, note = '', authorityName = '') {
