@@ -1,5 +1,7 @@
 import { apiRequest } from './api';
 
+const ADMIN_PIN_HEADER = (pin) => ({ 'x-admin-pin': pin });
+
 export const issueService = {
   // Get all issues with filters (status, category, search, sort)
   async getIssues(params = {}) {
@@ -47,6 +49,52 @@ export const issueService = {
     return apiRequest('/issues/ai-refine', {
       method: 'POST',
       body: { description, category, title }
+    });
+  },
+
+  // ── Authority Panel ──────────────────────────────────────────────────────────
+
+  // Get issues assigned to a specific local body / authority
+  async getIssuesByAuthority(params = {}) {
+    const query = new URLSearchParams();
+    if (params.authority) query.append('authority', params.authority);
+    if (params.ward) query.append('ward', params.ward);
+    if (params.status && params.status !== 'All') query.append('status', params.status);
+    if (params.category && params.category !== 'All') query.append('category', params.category);
+    const queryString = query.toString() ? `?${query.toString()}` : '';
+    return apiRequest(`/issues/by-authority${queryString}`);
+  },
+
+  // Update issue status (authority action)
+  async updateIssueStatus(id, status, note = '', authorityName = '') {
+    return apiRequest(`/issues/${id}/status`, {
+      method: 'PATCH',
+      body: { status, note, authorityName }
+    });
+  },
+
+  // Submit resolution with completion photo
+  async submitResolution(id, formData) {
+    return apiRequest(`/issues/${id}/resolution`, {
+      method: 'POST',
+      body: formData
+    });
+  },
+
+  // ── Admin Panel ──────────────────────────────────────────────────────────────
+
+  // Get all pending resolutions for admin review
+  async getPendingResolutions(adminPin) {
+    return apiRequest('/admin/pending-resolutions', {
+      headers: ADMIN_PIN_HEADER(adminPin)
+    });
+  },
+
+  // Admin approve or reject a resolution
+  async reviewResolution(id, decision, adminNotes = '', adminPin, adminName = 'Admin') {
+    return apiRequest(`/issues/${id}/resolution/review`, {
+      method: 'POST',
+      body: { decision, adminNotes, adminName, adminPin }
     });
   }
 };

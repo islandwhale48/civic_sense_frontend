@@ -47,8 +47,9 @@ export function ReportModal({ isOpen, onClose, onSubmitIssue }) {
   const clearImage = () => { setImageFile(null); setImagePreview(null); setAiScanResult(null); };
 
   const handleDetect = async () => {
-    const coords = await detectLocation();
-    setCoordinates(coords);
+    await detectLocation();
+    // Note: detectLocation already calls setCoordinates internally in the hook,
+    // which triggers the useEffect to call previewRouting automatically.
   };
 
   const handleAIRefine = async () => {

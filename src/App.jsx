@@ -1,16 +1,21 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Routes, Route, useNavigate } from 'react-router-dom';
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import Navbar from './Components/Navbar';
 import Sidebar from './Components/Sidebar';
 import ReportModal from './components/report/ReportModal';
 import Feed from './Pages/Feed';
 import Issue from './Pages/Issue';
 import Profile from './Pages/Profile';
+import AuthorityPanel from './Pages/AuthorityPanel';
+import AdminPanel from './Pages/AdminPanel';
 import { initialIssues } from './data/mockIssues';
 import { issueService } from './services/issueService';
 
 export default function App() {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // All hooks must be declared before any conditional returns (Rules of Hooks)
   const [issues, setIssues] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -123,6 +128,10 @@ export default function App() {
         }
       });
   }, [issues, searchQuery, selectedCategory, statusFilter, sortBy]);
+
+  // Standalone panels — skip citizen layout, render full-page
+  if (location.pathname.startsWith('/authority')) return <AuthorityPanel />;
+  if (location.pathname.startsWith('/admin')) return <AdminPanel />;
 
   return (
     <div className="min-h-screen bg-[#0b0f19] text-slate-100 flex flex-col font-sans selection:bg-blue-500 selection:text-white">
