@@ -1,20 +1,48 @@
-import React, { useState, useMemo } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { Routes, Route, useNavigate } from 'react-router-dom';
 import Navbar from './Components/Navbar';
 import Sidebar from './Components/Sidebar';
-import ReportCard from './Components/ReportCard';
+import ReportModal from './components/report/ReportModal';
 import Feed from './Pages/Feed';
 import Issue from './Pages/Issue';
 import Profile from './Pages/Profile';
 import { initialIssues } from './data/mockIssues';
+import { issueService } from './services/issueService';
 
 export default function App() {
-  const [issues, setIssues] = useState(initialIssues);
+  const navigate = useNavigate();
+  const [issues, setIssues] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
   const [sortBy, setSortBy] = useState('upvotes');
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+
+  // Fetch issues from backend API (falls back to mock data if offline)
+  const fetchIssues = useCallback(async () => {
+    try {
+      const res = await issueService.getIssues({
+        status: statusFilter !== 'All' ? statusFilter : undefined,
+        category: selectedCategory !== 'All' ? selectedCategory : undefined,
+        search: searchQuery || undefined,
+        sort: sortBy === 'upvotes' ? 'popular' : 'latest'
+      });
+      const data = res.issues || res.data?.issues || res;
+      if (Array.isArray(data) && data.length > 0) {
+        setIssues(data);
+      } else {
+        setIssues(initialIssues);
+      }
+    } catch (err) {
+      console.warn('API unavailable, using local mock data:', err.message);
+      setIssues(initialIssues);
+    }
+  }, []);
+
+  // Fetch issues on mount
+  useEffect(() => {
+    fetchIssues();
+  }, [fetchIssues]);
 
   // Toggle upvote on an issue
   const handleToggleUpvote = (issueId) => {
@@ -49,9 +77,17 @@ export default function App() {
     );
   };
 
-  // Create a new reported issue
-  const handleCreateIssue = (newIssue) => {
+  // Create a new reported issue, then re-fetch from backend
+  const handleCreateIssue = async (newIssue) => {
+    // Optimistically add to state immediately
     setIssues((prev) => [newIssue, ...prev]);
+    navigate(`/issue/${newIssue.id || newIssue.ticketId}`);
+    // Re-fetch from backend to sync with DB
+    try {
+      await fetchIssues();
+    } catch {
+      // Already added optimistically, no action needed
+    }
   };
 
   // Filter & sort issues for display
@@ -150,7 +186,7 @@ export default function App() {
       </main>
 
       {/* Global Report Modal */}
-      <ReportCard
+      <ReportModal
         isOpen={isReportModalOpen}
         onClose={() => setIsReportModalOpen(false)}
         onSubmitIssue={handleCreateIssue}

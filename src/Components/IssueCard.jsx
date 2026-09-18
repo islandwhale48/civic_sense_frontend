@@ -100,12 +100,12 @@ export default function IssueCard({ issue, onToggleUpvote }) {
           {/* Reporter info */}
           <div className="flex items-center gap-2">
             <img
-              src={issue.reporter.avatar}
-              alt={issue.reporter.name}
+              src={issue.reporter?.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=60'}
+              alt={issue.reporter?.name}
               className="w-6 h-6 rounded-full object-cover"
             />
             <span className="text-xs text-slate-300 font-medium">
-              {issue.reporter.name}
+              {issue.reporter?.name || 'Anonymous'}
             </span>
             <span className="text-[10px] text-slate-500">
               • {new Date(issue.createdAt).toLocaleDateString()}
@@ -130,7 +130,7 @@ export default function IssueCard({ issue, onToggleUpvote }) {
               >
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7" />
               </svg>
-              <span>{issue.upvotes}</span>
+              <span>{issue.upvotes || 0}</span>
             </button>
 
             <Link

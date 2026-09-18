@@ -97,7 +97,7 @@ export default function Issue({ issues, onToggleUpvote, onAddComment }) {
             >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7" />
             </svg>
-            <span>{issue.upvotes} Upvotes</span>
+            <span>{issue.upvotes || 0} Upvotes</span>
           </button>
         </div>
 
@@ -109,8 +109,8 @@ export default function Issue({ issues, onToggleUpvote, onAddComment }) {
         {/* Meta Info */}
         <div className="flex items-center gap-4 text-xs text-slate-400 flex-wrap mb-6 pb-6 border-b border-slate-800">
           <div className="flex items-center gap-2">
-            <img src={issue.reporter.avatar} alt="" className="w-6 h-6 rounded-full object-cover" />
-            <span>Reported by <strong className="text-slate-200">{issue.reporter.name}</strong></span>
+            <img src={issue.reporter?.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=60'} alt="" className="w-6 h-6 rounded-full object-cover" />
+            <span>Reported by <strong className="text-slate-200">{issue.reporter?.name || 'Anonymous'}</strong></span>
           </div>
           <span>•</span>
           <div className="flex items-center gap-1">
