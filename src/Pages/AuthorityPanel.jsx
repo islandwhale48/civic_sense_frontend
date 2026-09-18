@@ -219,7 +219,7 @@ function StatusDropdown({ issue, authorityName, onStatusChange }) {
   const cfg = STATUS_CONFIG[issue.status] || STATUS_CONFIG.pending;
 
   return (
-    <div ref={dropRef} style={{ position: 'relative' }}>
+    <div ref={dropRef} style={{ position: 'relative', zIndex: open ? 999 : 10 }}>
       <button
         style={{ ...styles.statusChip, background: cfg.bg, border: `1px solid ${cfg.border}`, color: cfg.color, cursor: 'pointer' }}
         onClick={() => setOpen(!open)}
@@ -227,17 +227,30 @@ function StatusDropdown({ issue, authorityName, onStatusChange }) {
       >
         <span style={{ ...styles.dot, background: cfg.dot }} />
         {loading ? 'Updating...' : cfg.label}
-        <span style={{ marginLeft: 4, fontSize: 10, opacity: 0.7 }}>▾</span>
+        <span style={{ marginLeft: 6, fontSize: 10, opacity: 0.8 }}>{open ? '▴' : '▾'}</span>
       </button>
+
       {open && (
         <div style={styles.dropdown}>
           <div style={styles.dropdownTitle}>Change Status</div>
           {allowed.map((s) => {
             const c = STATUS_CONFIG[s];
             return (
-              <button key={s} style={styles.dropdownItem} onClick={() => handleSelect(s)}>
+              <button
+                key={s}
+                style={styles.dropdownItem}
+                onClick={() => handleSelect(s)}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(99,102,241,0.25)';
+                  e.currentTarget.style.borderColor = 'rgba(99,102,241,0.5)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+                  e.currentTarget.style.borderColor = 'transparent';
+                }}
+              >
                 <span style={{ ...styles.dot, background: c.dot }} />
-                {c.label}
+                <span>{c.label}</span>
               </button>
             );
           })}
@@ -712,7 +725,7 @@ const styles = {
     padding: 20,
     transition: 'all 0.2s',
     position: 'relative',
-    overflow: 'hidden'
+    overflow: 'visible'
   },
   cardHeader: {
     display: 'flex',
@@ -866,20 +879,20 @@ const styles = {
   /* Dropdown */
   dropdown: {
     position: 'absolute',
-    top: '110%',
+    bottom: '120%',
     right: 0,
-    background: 'linear-gradient(135deg, #0f172a, #1e293b)',
-    border: '1px solid rgba(99,102,241,0.3)',
-    borderRadius: 10,
-    padding: '6px',
-    zIndex: 100,
-    minWidth: 180,
-    boxShadow: '0 20px 40px rgba(0,0,0,0.6)'
+    background: '#0f172a',
+    border: '1px solid rgba(99,102,241,0.5)',
+    borderRadius: 12,
+    padding: '8px',
+    zIndex: 9999,
+    minWidth: 190,
+    boxShadow: '0 20px 40px rgba(0,0,0,0.9), 0 0 15px rgba(99,102,241,0.2)'
   },
   dropdownTitle: {
     fontSize: 10,
-    color: '#475569',
-    fontWeight: 600,
+    color: '#64748b',
+    fontWeight: 700,
     letterSpacing: '0.08em',
     textTransform: 'uppercase',
     padding: '4px 8px 6px'
@@ -889,15 +902,17 @@ const styles = {
     alignItems: 'center',
     gap: 8,
     width: '100%',
-    padding: '8px 10px',
-    background: 'transparent',
-    border: 'none',
+    padding: '8px 12px',
+    background: 'rgba(255,255,255,0.04)',
+    border: '1px solid transparent',
     borderRadius: 7,
-    color: '#cbd5e1',
+    color: '#e2e8f0',
     cursor: 'pointer',
     fontSize: 13,
+    fontWeight: 600,
     textAlign: 'left',
-    transition: 'background 0.15s'
+    transition: 'all 0.15s',
+    marginBottom: 4
   },
 
   /* States */
