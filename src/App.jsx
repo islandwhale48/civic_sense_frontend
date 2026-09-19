@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import Navbar from './Components/Navbar';
 import Sidebar from './Components/Sidebar';
-import ReportModal from './components/report/ReportModal';
+import ReportModal from './Components/report/ReportModal';
 import UserAuthModal from './Components/auth/UserAuthModal';
 import Feed from './Pages/Feed';
 import Issue from './Pages/Issue';
